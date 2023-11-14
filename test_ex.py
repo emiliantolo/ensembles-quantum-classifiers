@@ -181,14 +181,14 @@ classifiers = [
      'args': {'shots': shots, 'execution': 'local'}},
     #bootstrap
     {'ensemble': 'bootstrap', 'classifier': 'quantum_distance',
-     'args': {'shots': shots, 'execution': 'local'}},
+     'args': {'N': N, 'n_samples': samples, 'shots': shots, 'execution': 'local'}},
     {'ensemble': 'bootstrap', 'classifier': 'quantum_distance',
-     'args': {'shots': shots, 'execution': 'local', 'balanced': True}},
+     'args': {'N': N, 'n_samples': samples, 'shots': shots, 'execution': 'local', 'balanced': True}},
     #boosting
     {'ensemble': 'boosting', 'classifier': 'quantum_distance',
-     'args': {'shots': shots, 'execution': 'local'}},
+     'args': {'N': N, 'n_samples': samples, 'shots': shots, 'execution': 'local'}},
     {'ensemble': 'boosting', 'classifier': 'quantum_distance',
-     'args': {'shots': shots, 'execution': 'local', 'balanced': True}},
+     'args': {'N': N, 'n_samples': samples, 'shots': shots, 'execution': 'local', 'balanced': True}},
     #stacking
     {'ensemble': 'stacking', 'classifier': 'quantum_combined',
      'args': {'shots': shots, 'execution': 'local'}}
