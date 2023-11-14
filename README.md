@@ -31,7 +31,7 @@ Datasets and code are based on: https://github.com/ZarHenry96/quantum-ml-pipelin
 
     python text_ex.py --data 0 --fold 0 
 
-Optional parameters are ```--data (-d)```, ```--fold (-f)```, and ```--classifier (-c)```, with the slicing or indexing of the related lists defined in the script, with format: ```(-)?[0-9]\*(:)?(-)?[0-9]\*```.
+Optional parameters are ```--data (-d)```, ```--fold (-f)```, and ```--classifier (-c)```, with the slicing or indexing of the related lists defined in the script, with format: ```(-)?[0-9]*(:)?(-)?[0-9]*```.
 
     python test_ex.py          # run all experiments 
     python test_ex.py -d 1:-1  # skip the first and last datasets
