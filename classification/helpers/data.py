@@ -15,12 +15,13 @@ def get_samples(data, n_samples=-1, replace=False, balanced=False, p=None):
             samples = int(n_samples / 2)
         pp = np.random.choice(pos, samples, replace=replace, p=p)
         nn = np.random.choice(neg, samples, replace=replace, p=p)
+        # returns even number of samples 
         return np.concatenate([nn, pp])
     else:
         if n_samples == -1:
             return np.random.choice(data, len(data), replace=replace, p=p)
         else:
-            return data
+            return np.random.choice(data, n_samples, replace=replace, p=p)
 
 def get_train_test(permuted, test_size=0.1, std='none', balance_train=False):
     size = int(test_size * len(permuted))
