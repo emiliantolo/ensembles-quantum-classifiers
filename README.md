@@ -18,6 +18,8 @@ Datasets and code are based on: https://github.com/ZarHenry96/quantum-ml-pipelin
 
 ### Setup environment
 
+Tested on Ubuntu 22.04 LTS.
+
 #### Get code
     git clone https://github.com/emiliantolo/ensembles-quantum-classifiers.git
     cd ensembles-quantum-classifiers
@@ -29,7 +31,7 @@ Datasets and code are based on: https://github.com/ZarHenry96/quantum-ml-pipelin
 
 ### Run experiments
 
-    python text_ex.py --data 0 --fold 0 
+    python test_ex.py --data 0 --fold 0 
 
 Optional parameters are ```--data (-d)```, ```--fold (-f)```, and ```--classifier (-c)```, with the slicing or indexing of the related lists defined in the script, with format: ```(-)?[0-9]*(:)?(-)?[0-9]*```.
 
