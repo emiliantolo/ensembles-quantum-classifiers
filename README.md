@@ -18,7 +18,7 @@ Datasets and code are based on: https://github.com/ZarHenry96/quantum-ml-pipelin
 
 ### Setup environment
 
-Tested on Ubuntu 22.04 LTS.
+Tested on Ubuntu 22.04 LTS, Python 3.10.
 
 #### Get code
     git clone https://github.com/emiliantolo/ensembles-quantum-classifiers.git
