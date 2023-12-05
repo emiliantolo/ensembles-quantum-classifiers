@@ -33,7 +33,7 @@ Tested on Ubuntu 22.04 LTS, Python 3.10.
 
     python test_ex.py --data 0 --fold 0 
 
-Optional parameters are ```--data (-d)```, ```--fold (-f)```, and ```--classifier (-c)```, with the slicing or indexing of the related lists defined in the script, with format: ```(-)?[0-9]*(:)?(-)?[0-9]*```.
+Optional arguments are ```--data (-d)```, ```--fold (-f)```, and ```--classifier (-c)```, with the slicing or indexing of the related lists defined in the script, with format: ```(-)?[0-9]*(:)?(-)?[0-9]*```.
 
     python test_ex.py          # run all experiments 
     python test_ex.py -d 1:-1  # skip the first and last datasets
