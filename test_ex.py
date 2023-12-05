@@ -25,7 +25,7 @@ def test(test_data, classifier):
             fn += 1
         if (res < 0) and (t['y'] < 0):
             tn += 1
-    if ((tp + fp) == 0) or ((tp + fn) == 0):
+    if tp == 0:
         f1 = 0
     else:
         precision = tp / (tp + fp)

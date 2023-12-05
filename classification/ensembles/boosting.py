@@ -11,6 +11,7 @@ class BoostingClassifier(BaseClassifier):
         self.classifier_name = classifier_name
         self.n_samples = n_samples
         self.N = N
+        self.balanced = balanced
         self.classifiers = []
         self.alpha = []
         self.cl_args = cl_args
@@ -20,7 +21,7 @@ class BoostingClassifier(BaseClassifier):
         weights = np.array([1 / len(self.data)] * len(self.data))
         for i in range(self.N):
             data = get_samples(
-                self.data, self.n_samples, replace=True, p=weights)
+                self.data, self.n_samples, replace=True, p=weights, balanced=self.balanced)
             classifier = gen_classifier(
                 self.classifier_name, data, **self.cl_args)
             predict = np.array([classifier.classify(d['x'])[0]
