@@ -3,24 +3,36 @@ import numpy as np
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, execute
 from qiskit.circuit.library import XGate, MCMT
 from qiskit.providers.aer import Aer
-from qiskit import transpile
-from qiskit.providers.fake_provider import FakeMontrealV2
+from qiskit_aer import AerSimulator
 from classification.base import BaseClassifier
+from classification.helpers.data import normalize
+from simulation.backend import SimulatorBackend
 
-
-class QuantumCosineClassifier(BaseClassifier):
-
-    def __init__(self, data, execution='local', shots=1024):
-
-        for d in data:
-            d['x'] = self.normalize(d['x'])
-
+class QuantumClassifier(BaseClassifier):
+    def __init__(self, data, execution='local', shots=1024, noise_sim_config=None, seed=123):
         BaseClassifier.__init__(self, data)
         self.execution = execution
         self.shots = shots
+        self.seed = seed
+        if self.execution == 'local':
+            self.sim = Aer.get_backend('aer_simulator')
+        elif self.execution == 'local+noise':
+            self.sim = SimulatorBackend().gen_simulator_from_config(noise_sim_config)
+        elif self.execution == 'local+fake':
+            self.sim = SimulatorBackend().gen_simulator_fake(noise_sim_config)
+        elif self.execution == 'statevector':
+            self.sim = Aer.get_backend('aer_simulator')
+        else:
+            raise ValueError('execution not recognized')
 
-    def normalize(self, x):
-        return x / np.linalg.norm(x)
+class QuantumCosineClassifier(QuantumClassifier):
+
+    def __init__(self, data, execution='local', shots=1024, noise_sim_config=None, seed=123):
+
+        for d in data:
+            d['x'] = normalize(d['x'])
+
+        QuantumClassifier.__init__(self, data, execution, shots, noise_sim_config, seed)
 
     def initialize(self, x):
 
@@ -113,23 +125,13 @@ class QuantumCosineClassifier(BaseClassifier):
         return circuit
 
     def classify(self, x):
-        x = self.normalize(x)
+        x = normalize(x)
         circuit = self.initialize(x)
-        if self.execution == 'local':
-            circuit.measure([0], [0])
-            #circuit.draw(output='mpl', filename='cosine.png')
-            backend = Aer.get_backend('aer_simulator')
-            # backend.set_options(device='GPU')
-            job = execute(circuit, backend, shots=self.shots)
-            result = job.result()
-            counts = result.get_counts(circuit)
-            c0 = counts.get('0', 0)
-            c1 = counts.get('1', 0)
-            p1 = c1 / (c0 + c1)
-        elif self.execution == 'statevector':
+        if self.execution == 'statevector':
+            #statevector
             circuit.save_statevector()
             backend = Aer.get_backend('aer_simulator')
-            job = execute(circuit, backend)
+            job = execute(circuit, backend, seed_simulator=self.seed, seed_transpiler=self.seed)
             result = job.result()
             output_statevector = result.get_statevector(circuit, decimals=10)
             p0, p1 = 0, 0
@@ -139,23 +141,28 @@ class QuantumCosineClassifier(BaseClassifier):
                 else:
                     p1 += (np.abs(amplitude) ** 2)
         else:
-            raise ValueError('execution not recognized')
+            #local
+            circuit.measure([0], [0])
+            #circuit.draw(output='mpl', filename='cosine.png')
+            backend = self.sim
+            # backend.set_options(device='GPU')
+            job = execute(circuit, backend, shots=self.shots, seed_simulator=self.seed, seed_transpiler=self.seed)
+            result = job.result()
+            counts = result.get_counts(circuit)
+            c0 = counts.get('0', 0)
+            c1 = counts.get('1', 0)
+            p1 = c1 / (c0 + c1)            
         return np.sign(1 - 4 * p1), np.abs(1 - 4 * p1)
 
 
-class QuantumDistanceClassifier(BaseClassifier):
+class QuantumDistanceClassifier(QuantumClassifier):
 
-    def __init__(self, data, execution='local', shots=1024):
+    def __init__(self, data, execution='local', shots=1024, noise_sim_config=None, seed=123):
 
         for d in data:
-            d['x'] = self.normalize(d['x'])
+            d['x'] = normalize(d['x'])
 
-        BaseClassifier.__init__(self, data)
-        self.execution = execution
-        self.shots = shots
-
-    def normalize(self, x):
-        return x / np.linalg.norm(x)
+        QuantumClassifier.__init__(self, data, execution, shots, noise_sim_config, seed)
 
     def initialize(self, x):
 
@@ -239,19 +246,35 @@ class QuantumDistanceClassifier(BaseClassifier):
         return circuit
 
     def classify(self, x):
-        x = self.normalize(x)
+        x = normalize(x)
         circuit = self.initialize(x)
-        if self.execution == 'local':
+        if self.execution == 'statevector':
+            #statevector
+            circuit.save_statevector()
+            backend = Aer.get_backend('aer_simulator')
+            job = execute(circuit, backend, seed_simulator=self.seed, seed_transpiler=self.seed)
+            result = job.result()
+            output_statevector = result.get_statevector(
+                circuit, decimals=10)
+            p00, p01 = 0, 0
+            for i, amplitude in enumerate(output_statevector):
+                if i % 2 == 0:
+                    if i < (len(output_statevector) / 2):
+                        p00 += (np.abs(amplitude) ** 2)
+                    else:
+                        p01 += (np.abs(amplitude) ** 2)
+        else:
+            #local
             ok = False
             it = 0
             timeout = 5
             while not ok:
                 circuit.measure([0, -1], [1, 0])
                 #circuit.draw(output='mpl', filename='distance.png')
-                backend = Aer.get_backend('aer_simulator')
+                backend = self.sim
                 # backend.set_options(device='GPU')
                 # increase shots for conditional measurement?
-                job = execute(circuit, backend, shots=self.shots)
+                job = execute(circuit, backend, shots=self.shots, seed_simulator=self.seed, seed_transpiler=self.seed)
                 result = job.result()
                 counts = result.get_counts(circuit)
                 p00 = counts.get('00', 0)
@@ -266,39 +289,18 @@ class QuantumDistanceClassifier(BaseClassifier):
                         it += 1
                         print('Got 0 zero-measurements in conditional measurement, it: {}/{}, retry timeout, returned label "0"'.format(it, timeout))
                         return 0, 0 # return 0
-        elif self.execution == 'statevector':
-            circuit.save_statevector()
-            backend = Aer.get_backend('aer_simulator')
-            job = execute(circuit, backend)
-            result = job.result()
-            output_statevector = result.get_statevector(
-                circuit, decimals=10)
-            p00, p01 = 0, 0
-            for i, amplitude in enumerate(output_statevector):
-                if i % 2 == 0:
-                    if i < (len(output_statevector) / 2):
-                        p00 += (np.abs(amplitude) ** 2)
-                    else:
-                        p01 += (np.abs(amplitude) ** 2)
-        else:
-            raise ValueError('execution not recognized')
         return np.sign(p00 / (p00 + p01) - 0.5), np.abs(2 * (p00 / (p00 + p01) - 0.5))
 
 
-class QuantumKNNClassifier(BaseClassifier):
+class QuantumKNNClassifier(QuantumClassifier):
 
-    def __init__(self, data, k=1, execution='local', shots=1024):
+    def __init__(self, data, k=1, execution='local', shots=1024, noise_sim_config=None, seed=123):
 
         for d in data:
-            d['x'] = self.normalize(d['x'])
+            d['x'] = normalize(d['x'])
 
-        BaseClassifier.__init__(self, data)
+        QuantumClassifier.__init__(self, data, execution, shots, noise_sim_config, seed)
         self.k = k
-        self.execution = execution
-        self.shots = shots
-
-    def normalize(self, x):
-        return x / np.linalg.norm(x)
 
     def initialize(self, x):
 
@@ -361,36 +363,17 @@ class QuantumKNNClassifier(BaseClassifier):
         return circuit
 
     def classify(self, x):
-        x = self.normalize(x)
+        x = normalize(x)
         circuit = self.initialize(x)
         N = len(self.data)
         swap_circuit_qubits = 1
         index_qubits = math.ceil(math.log2(N))
         eps = 1e-8
-        if self.execution == 'local':
-            meas_q = np.arange(swap_circuit_qubits+index_qubits)
-            meas_c = np.arange(index_qubits + 1)
-            circuit.measure(meas_q, meas_c)
-            #circuit.draw(output='mpl', filename='knn.png')
-            backend = Aer.get_backend('aer_simulator')
-            # backend.set_options(device='GPU')
-            job = execute(circuit, backend, shots=self.shots)
-            result = job.result()
-            counts = result.get_counts(circuit)
-            p0s = []
-            p1s = []
-            for i in range(2 ** index_qubits):
-                k = ('{0:0' + str(index_qubits) + 'b}').format(i)
-                p0 = counts.get(k + '0', 0)
-                p1 = counts.get(k + '1', 0)
-                p0s.append(p0)
-                p1s.append(p1)
-            qs = (np.array(p0s) / (np.sum(p0s) + eps)) - \
-                (np.array(p1s) / (np.sum(p1s) + eps))
-        elif self.execution == 'statevector':
+        if self.execution == 'statevector':
+            #statevector
             circuit.save_statevector()
             backend = Aer.get_backend('aer_simulator')
-            job = execute(circuit, backend)
+            job = execute(circuit, backend, seed_simulator=self.seed, seed_transpiler=self.seed)
             result = job.result()
             output_statevector = result.get_statevector(
                 circuit, decimals=10)
@@ -405,7 +388,26 @@ class QuantumKNNClassifier(BaseClassifier):
             qs = (np.array(p0s) / (np.sum(p0s) + eps)) - \
                 (np.array(p1s) / (np.sum(p1s) + eps))
         else:
-            raise ValueError('execution not recognized')
+            #local
+            meas_q = np.arange(swap_circuit_qubits+index_qubits)
+            meas_c = np.arange(index_qubits + 1)
+            circuit.measure(meas_q, meas_c)
+            #circuit.draw(output='mpl', filename='knn.png')
+            backend = self.sim
+            # backend.set_options(device='GPU')
+            job = execute(circuit, backend, shots=self.shots, seed_simulator=self.seed, seed_transpiler=self.seed)
+            result = job.result()
+            counts = result.get_counts(circuit)
+            p0s = []
+            p1s = []
+            for i in range(2 ** index_qubits):
+                k = ('{0:0' + str(index_qubits) + 'b}').format(i)
+                p0 = counts.get(k + '0', 0)
+                p1 = counts.get(k + '1', 0)
+                p0s.append(p0)
+                p1s.append(p1)
+            qs = (np.array(p0s) / (np.sum(p0s) + eps)) - \
+                (np.array(p1s) / (np.sum(p1s) + eps))
         qs = qs[:N]
         top_indexes = np.argsort(qs)[-self.k:]
         top_classes = [self.data[i]['y'] for i in top_indexes]
